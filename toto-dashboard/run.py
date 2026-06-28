@@ -1,7 +1,7 @@
-"""Einstiegspunkt: Rangliste berechnen und Dashboard erzeugen.
+"""Einstiegspunkt: Daten holen (lokal oder OneDrive), Scoreboard erzeugen.
 
-In PyCharm einfach diese Datei ausfuehren (Rechtsklick -> Run 'run').
-Danach docs/index.html committen und pushen -> GitHub Pages aktualisiert sich.
+Lokal in PyCharm: einfach ausfuehren -> nutzt data/TOTO_WM2026.xlsx.
+In der Cloud: GitHub Actions setzt TOTO_DATA_URL -> Datei wird heruntergeladen.
 """
 import os
 import sys

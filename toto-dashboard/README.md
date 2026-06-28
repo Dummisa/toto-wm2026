@@ -1,98 +1,89 @@
-# TOTO WM 2026 — Live-Rangliste
+# TOTO WM 2026 — Live-Rangliste (Cloud-Version)
 
-Statisches Dashboard, das die Tipp-Rangliste der Gruppenphase aus einem
-Excel-Workbook berechnet und über GitHub Pages live anzeigt.
+Das Scoreboard wird jetzt **in der Cloud** erzeugt (GitHub Actions) und über
+GitHub Pages veröffentlicht. Du brauchst kein Python und kein PyCharm mehr auf
+einem bestimmten Gerät — du bearbeitest nur die OneDrive-Excel und löst die
+Aktualisierung von überall aus (auch per GitHub-App auf dem Handy).
 
-## Wie es funktioniert
+## So funktioniert es
 
-1. Alle Tipps liegen im Workbook `data/TOTO_WM2026.xlsx` (ein Blatt pro
-   Teilnehmer + ein Blatt `Realität` für die echten Ergebnisse).
-2. `python run.py` liest die **Roh-Ergebnisse** (die eingetippten Tore) und
-   berechnet alles in Python neu — Gruppentabellen, Sechzehntelfinalisten,
-   Punkte und Rangliste. Die Excel-Formeln (SORTBY etc.) werden dafür *nicht*
-   gebraucht.
-3. Das Ergebnis wird als `docs/index.html` geschrieben.
-4. GitHub Pages serviert `docs/index.html` als Website.
+1. Die Tipps liegen in **einer Excel-Datei auf OneDrive** (ein Blatt pro
+   Teilnehmer + ein Blatt `Realität`).
+2. GitHub Actions lädt diese Datei über einen OneDrive-Link herunter, berechnet
+   die Rangliste in Python neu und schreibt `docs/index.html`.
+3. GitHub Pages zeigt die Seite an.
 
-## Punktesystem
+Du musst also nur zwei Dinge tun, wenn neue Resultate da sind:
+**(a)** Ergebnisse in der OneDrive-Excel eintragen, **(b)** den Workflow starten.
 
-| Kategorie | Punkte |
-|---|---|
-| Richtiger Sieger / Unentschieden | 5 pro Spiel |
-| Richtige Toranzahl | bis 5 pro Spiel (−1 pro Tor Abweichung) |
-| Richtiger Sechzehntelfinalist | 5 pro Team |
-| Playoff (später) | folgt |
+## Einmalige Einrichtung
 
-**Sechzehntelfinalisten** zählen erst, sobald **alle 72 Gruppenspiele** im
-Blatt `Realität` eingetragen sind. Solange nicht alle Resultate feststehen,
-wäre ein Vergleich der Qualifikanten unsinnig (die Tabellen stehen noch nicht
-fest). Bis dahin zeigt das Dashboard den Hinweis „Gruppenphase läuft".
+### 1. OneDrive-Freigabelink holen
+- In OneDrive die Datei `TOTO_WM2026.xlsx` auswählen → **Teilen** →
+  Berechtigung auf **„Jeder mit dem Link kann anzeigen"** stellen → **Link
+  kopieren**. (Wichtig: Ansicht reicht, kein Bearbeitungslink nötig.)
 
-Ein Spieler bekommt R32-Punkte nur, wenn er **selbst alle 72 Spiele** getippt
-hat — ein leerer Tippzettel bekommt keine geschenkten Punkte.
+### 2. Link in GitHub hinterlegen
+- Im Repo: **Settings → Secrets and variables → Actions → Tab „Variables"
+  → New repository variable**.
+- Name: `TOTO_DATA_URL`
+- Value: der kopierte OneDrive-Link → **Add variable**.
 
-## Lokal ausführen (PyCharm)
+### 3. GitHub Pages auf „Actions" stellen
+- **Settings → Pages → Source: „GitHub Actions"**.
 
-1. Projekt in PyCharm öffnen.
-2. Interpreter einrichten und Abhängigkeiten installieren:
-   ```
-   pip install -r requirements.txt
-   ```
-3. `run.py` ausführen (Rechtsklick → *Run 'run'*).
-4. `docs/index.html` im Browser öffnen, um das Ergebnis zu prüfen.
-5. Änderungen committen und pushen:
-   ```
-   git add data/TOTO_WM2026.xlsx docs/index.html
-   git commit -m "Resultate aktualisiert"
-   git push
-   ```
+Das war's. Ab jetzt nie mehr nötig.
 
-## GitHub Pages aktivieren (einmalig)
+## Aktualisieren — von jedem Gerät
 
-1. Repo auf GitHub anlegen und den Projektordner hochladen.
-2. Im Repo: **Settings → Pages**.
-3. Unter *Build and deployment*:
-   - **Source**: „Deploy from a branch"
-   - **Branch**: `main`, Ordner `/docs`
-4. Speichern. Nach ein paar Minuten ist die Seite unter
-   `https://<dein-username>.github.io/<repo-name>/` erreichbar.
+1. Resultate in der OneDrive-Excel eintragen (Excel-App auf Laptop, Tablet
+   oder Handy — egal welches Gerät, Hauptsache OneDrive synchronisiert).
+2. Auf github.com (oder in der **GitHub-Handy-App**): Tab **Actions** →
+   Workflow **„Update Scoreboard"** → **„Run workflow"**.
+3. Nach 1–2 Minuten ist das Scoreboard aktualisiert unter
+   `https://<dein-benutzername>.github.io/<repo>/`.
 
-## Automatische Aktualisierung (optional)
+### Noch bequemer: automatisch
+Im Workflow `.github/workflows/scoreboard.yml` die zwei `schedule`-Zeilen
+einkommentieren — dann aktualisiert sich das Scoreboard z.B. alle 30 Minuten
+von selbst, ganz ohne Tippen.
 
-Die Datei `.github/workflows/update.yml` regeneriert das Dashboard automatisch,
-sobald du eine neue Version von `data/TOTO_WM2026.xlsx` pushst. Du musst dann
-`docs/index.html` nicht selbst erzeugen — es reicht, die Excel-Datei zu pushen.
+## Lokal läuft es weiterhin
 
-Für stündliche Updates die `schedule`-Zeilen im Workflow einkommentieren.
+Wenn du doch mal lokal arbeitest: Datei unter `data/TOTO_WM2026.xlsx` ablegen
+und `python run.py` ausführen. Ist die Umgebungsvariable `TOTO_DATA_URL` nicht
+gesetzt, nimmt das Script automatisch die lokale Datei.
 
-## Playoff-Punkte später ergänzen
+## Hinweise / Stolpersteine
 
-Die Funktion `compute_playoff_points()` in `src/compute.py` ist als Platzhalter
-vorbereitet und gibt aktuell 0 zurück. Sobald das Playoff-Workbook steht:
+- Der OneDrive-Link muss auf **„Jeder mit dem Link"** stehen, sonst kann die
+  Cloud die Datei nicht laden.
+- Diese Methode ist für **persönliches OneDrive** gebaut (1drv.ms /
+  onedrive.live.com). Bei **OneDrive for Business / SharePoint** funktioniert
+  der automatische Direktlink evtl. nicht — dann an den Freigabelink `?download=1`
+  anhängen und diesen als `TOTO_DATA_URL` verwenden.
+- Die Berechnung liest nur die **eingetippten Tore** und rechnet alles selbst
+  neu; die Excel-Formeln (SORTBY) müssen also nicht funktionieren.
 
-1. Logik in `compute_playoff_points()` ergänzen (zweites Workbook laden,
-   Sieger pro KO-Runde mit der Realität vergleichen, Punkte je Runde vergeben).
-2. `run.py` mit dem Playoff-Pfad als zweitem Argument aufrufen, z.B.
-   `python src/generate.py data/TOTO_WM2026.xlsx data/TOTO_Playoffs.xlsx`.
+## Playoff-Punkte später
 
-Die Playoff-Spalte erscheint im Dashboard automatisch, sobald ein Playoff-Pfad
-übergeben wird (`playoff_active`). Die übrige Pipeline und das Layout sind
-bereits darauf vorbereitet.
+In `src/compute.py` ist `compute_playoff_points()` als Platzhalter vorbereitet.
+Sobald das Playoff-Sheet steht: Logik dort ergänzen, eine zweite Variable
+`TOTO_PLAYOFF_URL` im Repo anlegen und im Workflow die auskommentierte Zeile
+aktivieren. Die Playoff-Spalte erscheint dann automatisch im Dashboard.
 
-## Projektstruktur
+## Struktur
 
 ```
 toto-dashboard/
-├── data/
-│   └── TOTO_WM2026.xlsx        # Tipps + Realität (hier pflegst du die Daten)
+├── data/TOTO_WM2026.xlsx          # nur für lokale Läufe (optional)
 ├── src/
-│   ├── compute.py              # Berechnungslogik (Punkte, Tabellen, Quali)
-│   └── generate.py             # erzeugt docs/index.html
-├── docs/
-│   └── index.html              # generiert — von GitHub Pages serviert
-├── .github/workflows/
-│   └── update.yml              # optionale Automatik
-├── run.py                      # Einstiegspunkt (in PyCharm ausführen)
+│   ├── compute.py                 # Berechnung (Punkte, Tabellen, Quali)
+│   ├── datasource.py              # holt Daten lokal ODER vom OneDrive-Link
+│   └── generate.py                # erzeugt docs/index.html
+├── docs/index.html                # generiert — von GitHub Pages serviert
+├── .github/workflows/scoreboard.yml  # Cloud: erzeugen + veröffentlichen
+├── run.py
 ├── requirements.txt
 └── README.md
 ```

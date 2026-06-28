@@ -6,109 +6,68 @@
 <title>TOTO WM 2026 — Rangliste</title>
 <style>
   :root {
-    --bg: #0f1117;
-    --card: #181b24;
-    --row: #1e222e;
-    --row-alt: #20242f;
-    --text: #e8eaf0;
-    --muted: #8b90a0;
-    --accent: #3b82f6;
-    --gold: #ffd700;
-    --silver: #c0c0c0;
-    --bronze: #cd7f32;
-    --green: #22c55e;
-    --border: #2a2f3d;
+    --bg:#0f1117; --card:#181b24; --row-alt:#20242f; --text:#e8eaf0;
+    --muted:#8b90a0; --gold:#ffd700; --silver:#c0c0c0; --bronze:#cd7f32;
+    --green:#22c55e; --border:#2a2f3d;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    padding: 24px 16px 60px;
-    line-height: 1.5;
-  }
-  .wrap { max-width: 860px; margin: 0 auto; }
-  h1 {
-    font-size: 1.7rem;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    margin-bottom: 4px;
-  }
-  .sub { color: var(--muted); font-size: 0.85rem; margin-bottom: 20px; }
-  .status {
-    display: inline-flex; align-items: center; gap: 8px;
-    padding: 8px 14px; border-radius: 10px; font-size: 0.85rem;
-    font-weight: 600; margin-bottom: 22px;
-  }
-  .status.running { background: rgba(251,191,36,0.12); color: #fbbf24; }
-  .status.done { background: rgba(34,197,94,0.12); color: var(--green); }
-  .status .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
-  table { width: 100%; border-collapse: collapse; background: var(--card);
-           border-radius: 14px; overflow: hidden; }
-  thead th {
-    text-align: right; padding: 13px 12px; font-size: 0.72rem;
-    text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted);
-    background: #14171f; font-weight: 700; border-bottom: 1px solid var(--border);
-  }
-  thead th.l { text-align: left; }
-  tbody td { padding: 13px 12px; text-align: right; font-variant-numeric: tabular-nums;
-              border-bottom: 1px solid var(--border); }
-  tbody td.l { text-align: left; }
-  tbody tr:nth-child(even) { background: var(--row-alt); }
-  tbody tr:last-child td { border-bottom: none; }
-  .rank { font-weight: 800; width: 42px; }
-  .rank.r1 { color: var(--gold); }
-  .rank.r2 { color: var(--silver); }
-  .rank.r3 { color: var(--bronze); }
-  .name { font-weight: 600; }
-  .total { font-weight: 800; font-size: 1.05rem; }
-  .muted-col { color: var(--muted); }
-  .po-hidden { display: none; }
-  footer { margin-top: 18px; color: var(--muted); font-size: 0.78rem; text-align: center; }
-  @media (max-width: 600px) {
-    .hide-sm { display: none; }
-    h1 { font-size: 1.4rem; }
-    tbody td, thead th { padding: 11px 8px; }
-  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+    background:var(--bg); color:var(--text); padding:24px 16px 60px; line-height:1.5; }
+  .wrap { max-width:860px; margin:0 auto; }
+  h1 { font-size:1.7rem; font-weight:800; letter-spacing:-.02em; margin-bottom:4px; }
+  .sub { color:var(--muted); font-size:.85rem; margin-bottom:20px; }
+  .status { display:inline-flex; align-items:center; gap:8px; padding:8px 14px;
+    border-radius:10px; font-size:.85rem; font-weight:600; margin-bottom:22px; }
+  .status.running { background:rgba(251,191,36,.12); color:#fbbf24; }
+  .status.done { background:rgba(34,197,94,.12); color:var(--green); }
+  .status .dot { width:8px; height:8px; border-radius:50%; background:currentColor; }
+  table { width:100%; border-collapse:collapse; background:var(--card);
+    border-radius:14px; overflow:hidden; }
+  thead th { text-align:right; padding:13px 12px; font-size:.72rem; text-transform:uppercase;
+    letter-spacing:.05em; color:var(--muted); background:#14171f; font-weight:700;
+    border-bottom:1px solid var(--border); }
+  thead th.l { text-align:left; }
+  tbody td { padding:13px 12px; text-align:right; font-variant-numeric:tabular-nums;
+    border-bottom:1px solid var(--border); }
+  tbody td.l { text-align:left; }
+  tbody tr:nth-child(even) { background:var(--row-alt); }
+  tbody tr:last-child td { border-bottom:none; }
+  .rank { font-weight:800; width:42px; }
+  .rank.r1 { color:var(--gold); } .rank.r2 { color:var(--silver); } .rank.r3 { color:var(--bronze); }
+  .name { font-weight:600; }
+  .total { font-weight:800; font-size:1.05rem; }
+  .muted-col { color:var(--muted); }
+  .po-hidden { display:none; }
+  footer { margin-top:18px; color:var(--muted); font-size:.78rem; text-align:center; }
+  @media (max-width:600px) { .hide-sm { display:none; } h1 { font-size:1.4rem; }
+    tbody td,thead th { padding:11px 8px; } }
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>TOTO WM 2026</h1>
-  <div class="sub">Live-Rangliste Gruppenphase · zuletzt aktualisiert: 15.06.2026 22:58</div>
-  <div class="status running"><span class="dot"></span>Gruppenphase läuft — Sechzehntelfinalisten zählen noch nicht</div>
+  <div class="sub">Live-Rangliste Gruppenphase · zuletzt aktualisiert: 28.06.2026 09:51</div>
+  <div class="status done"><span class="dot"></span>Gruppenphase abgeschlossen — Sechzehntelfinalisten zählen</div>
   <table id="board">
-    <thead>
-      <tr>
-        <th class="l">#</th>
-        <th class="l">Name</th>
-        <th class="hide-sm">Spieltipps</th>
-        <th class="hide-sm">Tortipps</th>
-        <th>16tel</th>
-        <th class="po-col po-hidden">Playoff</th>
-        <th>Total</th>
-      </tr>
-    </thead>
+    <thead><tr>
+      <th class="l">#</th><th class="l">Name</th>
+      <th class="hide-sm">Spieltipps</th><th class="hide-sm">Tortipps</th>
+      <th>16tel</th><th class="po-col po-hidden">Playoff</th><th>Total</th>
+    </tr></thead>
     <tbody></tbody>
   </table>
-  <footer>Automatisch generiert aus dem Tipp-Workbook · 17 Teilnehmer</footer>
+  <footer>Automatisch generiert · 3 Teilnehmer</footer>
 </div>
 <script>
-  const DATA = {"group_stage_complete": false, "r32_counts": false, "playoff_active": false, "players": [{"name": "Vito+Jonas", "sieger": 45, "tore": 46, "r32": 0, "playoff": 0, "gruppenphase": 91, "total": 91, "rank": 1}, {"name": "Julius", "sieger": 40, "tore": 42, "r32": 0, "playoff": 0, "gruppenphase": 82, "total": 82, "rank": 2}, {"name": "Urs", "sieger": 35, "tore": 47, "r32": 0, "playoff": 0, "gruppenphase": 82, "total": 82, "rank": 2}, {"name": "Tobe", "sieger": 40, "tore": 41, "r32": 0, "playoff": 0, "gruppenphase": 81, "total": 81, "rank": 4}, {"name": "Dennis", "sieger": 30, "tore": 48, "r32": 0, "playoff": 0, "gruppenphase": 78, "total": 78, "rank": 5}, {"name": "Mirco", "sieger": 35, "tore": 43, "r32": 0, "playoff": 0, "gruppenphase": 78, "total": 78, "rank": 5}, {"name": "Max", "sieger": 30, "tore": 47, "r32": 0, "playoff": 0, "gruppenphase": 77, "total": 77, "rank": 7}, {"name": "Colin", "sieger": 25, "tore": 48, "r32": 0, "playoff": 0, "gruppenphase": 73, "total": 73, "rank": 8}, {"name": "Nici", "sieger": 30, "tore": 42, "r32": 0, "playoff": 0, "gruppenphase": 72, "total": 72, "rank": 9}, {"name": "Fabian", "sieger": 30, "tore": 40, "r32": 0, "playoff": 0, "gruppenphase": 70, "total": 70, "rank": 10}, {"name": "Claude (out of competition)", "sieger": 25, "tore": 44, "r32": 0, "playoff": 0, "gruppenphase": 69, "total": 69, "rank": 11}, {"name": "Leonard", "sieger": 30, "tore": 37, "r32": 0, "playoff": 0, "gruppenphase": 67, "total": 67, "rank": 12}, {"name": "Sebi", "sieger": 25, "tore": 40, "r32": 0, "playoff": 0, "gruppenphase": 65, "total": 65, "rank": 13}, {"name": "Nick", "sieger": 25, "tore": 38, "r32": 0, "playoff": 0, "gruppenphase": 63, "total": 63, "rank": 14}, {"name": "Heidi", "sieger": 20, "tore": 42, "r32": 0, "playoff": 0, "gruppenphase": 62, "total": 62, "rank": 15}, {"name": "Linda", "sieger": 20, "tore": 37, "r32": 0, "playoff": 0, "gruppenphase": 57, "total": 57, "rank": 16}, {"name": "Mads", "sieger": 25, "tore": 31, "r32": 0, "playoff": 0, "gruppenphase": 56, "total": 56, "rank": 17}]};
-
+  const DATA = {"group_stage_complete": true, "r32_counts": true, "playoff_active": false, "players": [{"name": "Anna", "sieger": 140, "tore": 185, "r32": 100, "playoff": 0, "gruppenphase": 425, "total": 425, "rank": 1}, {"name": "Chiara", "sieger": 105, "tore": 192, "r32": 115, "playoff": 0, "gruppenphase": 412, "total": 412, "rank": 2}, {"name": "Beat", "sieger": 120, "tore": 175, "r32": 110, "playoff": 0, "gruppenphase": 405, "total": 405, "rank": 3}]};
   function rankClass(r) { return r <= 3 ? 'rank r' + r : 'rank'; }
-
   function render() {
     const tbody = document.querySelector('#board tbody');
     tbody.innerHTML = '';
-    // Playoff-Spalte nur zeigen, wenn aktiv
-    if (DATA.playoff_active) {
-      document.querySelectorAll('.po-col').forEach(e => e.classList.remove('po-hidden'));
-    }
+    if (DATA.playoff_active) document.querySelectorAll('.po-col').forEach(e => e.classList.remove('po-hidden'));
     DATA.players.forEach(p => {
       const tr = document.createElement('tr');
-      const poCell = DATA.playoff_active
-        ? `<td class="po-col">${p.playoff}</td>` : '';
+      const poCell = DATA.playoff_active ? `<td class="po-col">${p.playoff}</td>` : '';
       tr.innerHTML = `
         <td class="l ${rankClass(p.rank)}">${p.rank}</td>
         <td class="l name">${p.name}</td>

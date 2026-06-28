@@ -1,0 +1,53 @@
+# Erzeugt das Scoreboard in der Cloud und veroeffentlicht es auf GitHub Pages.
+# Holt die Excel-Daten vom OneDrive-Link (Repo-Variable TOTO_DATA_URL).
+# Auslesbar von ueberall: Tab "Actions" -> "Run workflow" (auch per GitHub-App).
+
+name: Update Scoreboard
+
+on:
+  workflow_dispatch:          # manuell ausloesen (Knopf im Actions-Tab / App)
+  # schedule:
+  #   - cron: '*/30 * * * *'  # optional: alle 30 Minuten automatisch
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Generate dashboard from OneDrive data
+        env:
+          TOTO_DATA_URL: ${{ vars.TOTO_DATA_URL }}
+          # TOTO_PLAYOFF_URL: ${{ vars.TOTO_PLAYOFF_URL }}  # spaeter aktivieren
+        run: python run.py
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload docs
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4
