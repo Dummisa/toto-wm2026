@@ -1,13 +1,10 @@
-"""
-Bestimmt, woher die Excel-Daten kommen.
+"""Bestimmt die Datenquellen (lokal oder per URL) fuer Gruppenphase + Playoffs.
 
-- Wenn die Umgebungsvariable TOTO_DATA_URL gesetzt ist (z.B. ein
-  OneDrive-Freigabelink), wird die Datei heruntergeladen.
-- Sonst wird die lokale Datei data/TOTO_WM2026.xlsx verwendet.
+- TOTO_DATA_URL    -> Gruppenphasen-Workbook (sonst data/TOTO_WM2026.xlsx)
+- TOTO_PLAYOFF_URL -> Playoff-Workbook       (sonst data/TOTO_Playoffs.xlsx)
 
-So laeuft dasselbe Projekt sowohl lokal (mit Datei im Ordner) als auch in
-der Cloud (GitHub Actions zieht die Datei vom OneDrive-Link) — ohne
-Code-Aenderung. Es wird nur die Standardbibliothek genutzt (kein 'requests').
+Fehlt eine Datei (kein URL, lokal nicht vorhanden), wird None zurueckgegeben.
+Nur Standardbibliothek (kein 'requests').
 """
 
 import base64
@@ -17,23 +14,16 @@ import urllib.request
 
 HERE = os.path.dirname(__file__)
 ROOT = os.path.dirname(HERE)
-LOCAL_DATA = os.path.join(ROOT, 'data', 'TOTO_WM2026.xlsx')
+LOCAL_GROUP = os.path.join(ROOT, 'data', 'TOTO_WM2026.xlsx')
+LOCAL_PLAYOFF = os.path.join(ROOT, 'data', 'TOTO_Playoffs.xlsx')
 
 
 def onedrive_to_direct(url):
-    """Wandelt einen OneDrive-Freigabelink in einen Direkt-Download-Link.
-
-    Funktioniert fuer persoenliche OneDrive-Links (1drv.ms / onedrive.live.com)
-    ueber die oeffentliche 'shares'-API. Andere URLs werden unveraendert
-    zurueckgegeben (z.B. wenn schon ein Direktlink uebergeben wird).
-    """
     u = url.strip()
-    is_onedrive = ('1drv.ms' in u or 'onedrive.live.com' in u)
-    if not is_onedrive:
-        return u
-    b64 = base64.urlsafe_b64encode(u.encode('utf-8')).decode('ascii')
-    token = 'u!' + b64.rstrip('=')
-    return f'https://api.onedrive.com/v1.0/shares/{token}/root/content'
+    if '1drv.ms' in u or 'onedrive.live.com' in u:
+        b64 = base64.urlsafe_b64encode(u.encode('utf-8')).decode('ascii')
+        return f'https://api.onedrive.com/v1.0/shares/u!{b64.rstrip("=")}/root/content'
+    return u
 
 
 def _download(url, dest):
@@ -42,30 +32,27 @@ def _download(url, dest):
     with urllib.request.urlopen(req, timeout=60) as resp:
         data = resp.read()
     if len(data) < 1000:
-        raise RuntimeError(
-            "Heruntergeladene Datei ist verdaechtig klein — stimmt der "
-            "OneDrive-Link und ist die Freigabe auf 'Jeder mit dem Link'?")
+        raise RuntimeError("Heruntergeladene Datei verdaechtig klein — Link/Freigabe pruefen.")
     with open(dest, 'wb') as f:
         f.write(data)
     return dest
 
 
-def resolve_data_path(env_var='TOTO_DATA_URL', local_default=LOCAL_DATA):
-    """Gibt den Pfad zur Excel-Datei zurueck (lokal oder heruntergeladen)."""
+def _resolve(env_var, local_default, tmp_name):
     url = os.environ.get(env_var, '').strip()
     if url:
-        tmp = os.path.join(tempfile.gettempdir(), 'toto_data.xlsx')
         print(f"Lade Daten von URL ({env_var}) ...")
-        return _download(url, tmp)
-    print(f"Verwende lokale Datei: {local_default}")
-    return local_default
+        return _download(url, os.path.join(tempfile.gettempdir(), tmp_name))
+    if os.path.exists(local_default):
+        print(f"Verwende lokale Datei: {local_default}")
+        return local_default
+    print(f"Keine Datei fuer {env_var} gefunden (uebersprungen).")
+    return None
 
 
-def resolve_playoff_path(env_var='TOTO_PLAYOFF_URL'):
-    """Optionaler Playoff-Datenpfad (fuer spaeter). None wenn nicht gesetzt."""
-    url = os.environ.get(env_var, '').strip()
-    if not url:
-        return None
-    tmp = os.path.join(tempfile.gettempdir(), 'toto_playoff.xlsx')
-    print(f"Lade Playoff-Daten von URL ({env_var}) ...")
-    return _download(url, tmp)
+def resolve_data_path():
+    return _resolve('TOTO_DATA_URL', LOCAL_GROUP, 'toto_group.xlsx')
+
+
+def resolve_playoff_path():
+    return _resolve('TOTO_PLAYOFF_URL', LOCAL_PLAYOFF, 'toto_playoff.xlsx')

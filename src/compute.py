@@ -1,17 +1,4 @@
-"""
-TOTO WM 2026 — Berechnungslogik.
-
-Liest die Roh-Ergebnisse (eingetippte Tore) aus dem Excel-Workbook und
-berechnet die gesamte Rangliste neu in Python. Verlaesst sich NICHT auf
-die Excel-Formeln (insb. nicht auf das Excel-exklusive SORTBY).
-
-Punktesystem (Gruppenphase):
-  - Richtiger Sieger / Unentschieden: 5 Punkte
-  - Richtige Toranzahl: max. 5 (minus 1 pro Tor Abweichung, min. 0)
-  - Richtiger Sechzehntelfinalist: 5 je korrekt getipptes Team
-    -> zaehlt ERST, wenn alle Gruppenspiele in 'Realitaet' eingetragen sind
-       UND der Spieler selbst alle 72 Spiele getippt hat.
-"""
+"""TOTO WM 2026 — Gruppenphasen-Berechnung (liest Roh-Ergebnisse, rechnet neu)."""
 
 from openpyxl import load_workbook
 
@@ -89,10 +76,8 @@ def compute_standings(matches):
 
     ranking = sorted(
         table.keys(),
-        key=lambda t: (table[t]['pts'],
-                       table[t]['gf'] - table[t]['ga'],
-                       table[t]['gf'],
-                       t),
+        key=lambda t: (table[t]['pts'], table[t]['gf'] - table[t]['ga'],
+                       table[t]['gf'], t),
         reverse=True)
     return ranking, table
 
@@ -107,10 +92,8 @@ def compute_qualifiers(all_standings):
             qualifiers.add(ranking[1])
         if len(ranking) >= 3:
             t = ranking[2]
-            thirds.append((table[t]['pts'],
-                           table[t]['gf'] - table[t]['ga'],
-                           table[t]['gf'],
-                           t))
+            thirds.append((table[t]['pts'], table[t]['gf'] - table[t]['ga'],
+                           table[t]['gf'], t))
     thirds.sort(reverse=True)
     for _, _, _, t in thirds[:8]:
         qualifiers.add(t)
@@ -118,14 +101,11 @@ def compute_qualifiers(all_standings):
 
 
 def match_points(p_matches, r_matches):
-    sieger = 0
-    tore = 0
+    sieger = tore = 0
     for (pht, pat, phg, pag), (rht, rat, rhg, rag) in zip(p_matches, r_matches):
         if None in (phg, pag, rhg, rag):
             continue
-        ps = (phg > pag) - (phg < pag)
-        rs = (rhg > rag) - (rhg < rag)
-        if ps == rs:
+        if (phg > pag) - (phg < pag) == (rhg > rag) - (rhg < rag):
             sieger += 5
         tore += max(0, 5 - abs(phg - rhg) - abs(pag - rag))
     return sieger, tore
@@ -147,76 +127,32 @@ def player_predictions_complete(p_matches):
     return True
 
 
-def compute_playoff_points(player_name, playoff_path=None):
-    """Hook fuer spaetere Playoff-Punkte. Aktuell 0."""
-    if not playoff_path:
-        return 0
-    return 0
-
-
 def find_players(wb):
     return [s for s in wb.sheetnames if s not in NON_PLAYER_SHEETS]
 
 
-def compute_all(xlsx_path, playoff_path=None):
+def compute_group(xlsx_path):
+    """Gibt (dict Spielername -> {sieger,tore,r32,total}, complete_bool) zurueck."""
     wb = load_workbook(xlsx_path, data_only=False)
     layout = build_group_layout()
-
-    if 'Realität' in wb.sheetnames:
-        real_ws = wb['Realität']
-    elif 'Realitaet' in wb.sheetnames:
-        real_ws = wb['Realitaet']
-    else:
-        raise ValueError("Kein 'Realität'-Sheet gefunden.")
-
+    real_ws = wb['Realität'] if 'Realität' in wb.sheetnames else wb['Realitaet']
     real_matches = read_sheet_matches(real_ws, layout)
     real_standings = {g: compute_standings(ms) for g, ms in real_matches.items()}
     complete = group_stage_complete(real_matches)
     actual_quali = compute_qualifiers(real_standings) if complete else set()
-    playoff_active = bool(playoff_path)
 
-    players = []
+    out = {}
     for name in find_players(wb):
-        ws = wb[name]
-        p_matches = read_sheet_matches(ws, layout)
-
-        sieger_total = 0
-        tore_total = 0
+        p_matches = read_sheet_matches(wb[name], layout)
+        sieger = tore = 0
         for g in layout:
             s, t = match_points(p_matches[g], real_matches[g])
-            sieger_total += s
-            tore_total += t
-
+            sieger += s
+            tore += t
         r32 = 0
         if complete and player_predictions_complete(p_matches):
             p_standings = {g: compute_standings(ms) for g, ms in p_matches.items()}
-            p_quali = compute_qualifiers(p_standings)
-            r32 = 5 * len(p_quali & actual_quali)
-
-        playoff = compute_playoff_points(name, playoff_path)
-
-        players.append({
-            'name': name,
-            'sieger': sieger_total,
-            'tore': tore_total,
-            'r32': r32,
-            'playoff': playoff,
-            'gruppenphase': sieger_total + tore_total + r32,
-            'total': sieger_total + tore_total + r32 + playoff,
-        })
-
-    players.sort(key=lambda x: x['total'], reverse=True)
-    last_total = None
-    last_rank = 0
-    for i, p in enumerate(players):
-        if p['total'] != last_total:
-            last_rank = i + 1
-            last_total = p['total']
-        p['rank'] = last_rank
-
-    return {
-        'group_stage_complete': complete,
-        'r32_counts': complete,
-        'playoff_active': playoff_active,
-        'players': players,
-    }
+            r32 = 5 * len(compute_qualifiers(p_standings) & actual_quali)
+        out[name] = {'sieger': sieger, 'tore': tore, 'r32': r32,
+                     'total': sieger + tore + r32}
+    return out, complete

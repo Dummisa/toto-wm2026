@@ -1,8 +1,4 @@
-"""
-Erzeugt aus den Excel-Daten die statische Dashboard-Seite (docs/index.html).
-Die Datenquelle wird ueber datasource bestimmt: lokale Datei oder
-OneDrive-Link (Umgebungsvariable TOTO_DATA_URL).
-"""
+"""Erzeugt das kombinierte Scoreboard (Gruppenphase + Playoffs) als docs/index.html."""
 
 import json
 import os
@@ -10,41 +6,70 @@ import sys
 from datetime import datetime, timezone
 
 sys.path.insert(0, os.path.dirname(__file__))
-from compute import compute_all          # noqa: E402
+from compute import compute_group                       # noqa: E402
+from compute_playoffs import compute_playoffs           # noqa: E402
 from datasource import resolve_data_path, resolve_playoff_path  # noqa: E402
 
-HERE = os.path.dirname(__file__)
-ROOT = os.path.dirname(HERE)
+ROOT = os.path.dirname(os.path.dirname(__file__))
 OUTPUT = os.path.join(ROOT, 'docs', 'index.html')
+
+
+def build_result():
+    group_path = resolve_data_path()
+    playoff_path = resolve_playoff_path()
+
+    group, group_complete = ({}, False)
+    if group_path:
+        group, group_complete = compute_group(group_path)
+
+    playoff = {}
+    if playoff_path:
+        playoff = compute_playoffs(playoff_path)
+
+    playoff_active = bool(playoff) and any(p['total'] > 0 for p in playoff.values())
+
+    names = sorted(set(group) | set(playoff))
+    players = []
+    for n in names:
+        g = group.get(n, {}).get('total', 0)
+        po = playoff.get(n, {}).get('total', 0)
+        players.append({'name': n, 'gruppe': g, 'playoff': po, 'total': g + po})
+
+    players.sort(key=lambda x: x['total'], reverse=True)
+    last, rank = None, 0
+    for i, p in enumerate(players):
+        if p['total'] != last:
+            rank, last = i + 1, p['total']
+        p['rank'] = rank
+
+    return {
+        'group_stage_complete': group_complete,
+        'playoff_active': playoff_active,
+        'players': players,
+    }
 
 
 def render_html(result):
     updated = datetime.now(timezone.utc).astimezone().strftime('%d.%m.%Y %H:%M')
     payload = json.dumps(result, ensure_ascii=False)
-
-    if result['group_stage_complete']:
-        status_text = 'Gruppenphase abgeschlossen — Sechzehntelfinalisten zählen'
-        status_class = 'done'
+    if result['playoff_active']:
+        status_text, status_class = 'Playoffs laufen', 'done'
+    elif result['group_stage_complete']:
+        status_text, status_class = 'Gruppenphase abgeschlossen', 'done'
     else:
-        status_text = 'Gruppenphase läuft — Sechzehntelfinalisten zählen noch nicht'
-        status_class = 'running'
+        status_text, status_class = 'Gruppenphase läuft', 'running'
 
     return f"""<!DOCTYPE html>
-<html lang="de">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<html lang="de"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>TOTO WM 2026 — Rangliste</title>
 <style>
-  :root {{
-    --bg:#0f1117; --card:#181b24; --row-alt:#20242f; --text:#e8eaf0;
-    --muted:#8b90a0; --gold:#ffd700; --silver:#c0c0c0; --bronze:#cd7f32;
-    --green:#22c55e; --border:#2a2f3d;
-  }}
+  :root {{ --bg:#0f1117; --card:#181b24; --row-alt:#20242f; --text:#e8eaf0; --muted:#8b90a0;
+    --gold:#ffd700; --silver:#c0c0c0; --bronze:#cd7f32; --green:#22c55e; --border:#2a2f3d; }}
   * {{ box-sizing:border-box; margin:0; padding:0; }}
   body {{ font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
     background:var(--bg); color:var(--text); padding:24px 16px 60px; line-height:1.5; }}
-  .wrap {{ max-width:860px; margin:0 auto; }}
+  .wrap {{ max-width:760px; margin:0 auto; }}
   h1 {{ font-size:1.7rem; font-weight:800; letter-spacing:-.02em; margin-bottom:4px; }}
   .sub {{ color:var(--muted); font-size:.85rem; margin-bottom:20px; }}
   .status {{ display:inline-flex; align-items:center; gap:8px; padding:8px 14px;
@@ -65,72 +90,53 @@ def render_html(result):
   tbody tr:last-child td {{ border-bottom:none; }}
   .rank {{ font-weight:800; width:42px; }}
   .rank.r1 {{ color:var(--gold); }} .rank.r2 {{ color:var(--silver); }} .rank.r3 {{ color:var(--bronze); }}
-  .name {{ font-weight:600; }}
-  .total {{ font-weight:800; font-size:1.05rem; }}
-  .muted-col {{ color:var(--muted); }}
-  .po-hidden {{ display:none; }}
+  .name {{ font-weight:600; }} .total {{ font-weight:800; font-size:1.05rem; }}
+  .muted-col {{ color:var(--muted); }} .po-hidden {{ display:none; }}
   footer {{ margin-top:18px; color:var(--muted); font-size:.78rem; text-align:center; }}
-  @media (max-width:600px) {{ .hide-sm {{ display:none; }} h1 {{ font-size:1.4rem; }}
-    tbody td,thead th {{ padding:11px 8px; }} }}
-</style>
-</head>
-<body>
+  @media (max-width:600px) {{ h1 {{ font-size:1.4rem; }} tbody td,thead th {{ padding:11px 8px; }} }}
+</style></head><body>
 <div class="wrap">
   <h1>TOTO WM 2026</h1>
-  <div class="sub">Live-Rangliste Gruppenphase · zuletzt aktualisiert: {updated}</div>
+  <div class="sub">Live-Rangliste · zuletzt aktualisiert: {updated}</div>
   <div class="status {status_class}"><span class="dot"></span>{status_text}</div>
-  <table id="board">
-    <thead><tr>
-      <th class="l">#</th><th class="l">Name</th>
-      <th class="hide-sm">Spieltipps</th><th class="hide-sm">Tortipps</th>
-      <th>16tel</th><th class="po-col po-hidden">Playoff</th><th>Total</th>
-    </tr></thead>
-    <tbody></tbody>
-  </table>
+  <table id="board"><thead><tr>
+    <th class="l">#</th><th class="l">Name</th>
+    <th>Gruppenphase</th><th class="po-col po-hidden">Playoffs</th><th>Total</th>
+  </tr></thead><tbody></tbody></table>
   <footer>Automatisch generiert · {len(result['players'])} Teilnehmer</footer>
 </div>
 <script>
   const DATA = {payload};
-  function rankClass(r) {{ return r <= 3 ? 'rank r' + r : 'rank'; }}
-  function render() {{
-    const tbody = document.querySelector('#board tbody');
-    tbody.innerHTML = '';
-    if (DATA.playoff_active) document.querySelectorAll('.po-col').forEach(e => e.classList.remove('po-hidden'));
+  const rc = r => r <= 3 ? 'rank r' + r : 'rank';
+  (function(){{
+    const tb = document.querySelector('#board tbody');
+    if (DATA.playoff_active) document.querySelectorAll('.po-col').forEach(e=>e.classList.remove('po-hidden'));
     DATA.players.forEach(p => {{
       const tr = document.createElement('tr');
-      const poCell = DATA.playoff_active ? `<td class="po-col">${{p.playoff}}</td>` : '';
-      tr.innerHTML = `
-        <td class="l ${{rankClass(p.rank)}}">${{p.rank}}</td>
-        <td class="l name">${{p.name}}</td>
-        <td class="hide-sm muted-col">${{p.sieger}}</td>
-        <td class="hide-sm muted-col">${{p.tore}}</td>
-        <td class="muted-col">${{p.r32}}</td>
-        ${{poCell}}
-        <td class="total">${{p.total}}</td>`;
-      tbody.appendChild(tr);
+      const po = DATA.playoff_active ? `<td class="po-col muted-col">${{p.playoff}}</td>` : '';
+      tr.innerHTML = `<td class="l ${{rc(p.rank)}}">${{p.rank}}</td>`
+        + `<td class="l name">${{p.name}}</td>`
+        + `<td class="muted-col">${{p.gruppe}}</td>` + po
+        + `<td class="total">${{p.total}}</td>`;
+      tb.appendChild(tr);
     }});
-  }}
-  render();
-</script>
-</body>
-</html>
+  }})();
+</script></body></html>
 """
 
 
 def main():
-    data_path = resolve_data_path()
-    playoff_path = resolve_playoff_path()
-    result = compute_all(data_path, playoff_path=playoff_path)
+    result = build_result()
     html = render_html(result)
     os.makedirs(os.path.dirname(OUTPUT), exist_ok=True)
     with open(OUTPUT, 'w', encoding='utf-8') as f:
         f.write(html)
     print(f"Dashboard erzeugt: {OUTPUT}")
     print(f"  Teilnehmer: {len(result['players'])}")
-    print(f"  Gruppenphase abgeschlossen: {result['group_stage_complete']}")
+    print(f"  Playoffs aktiv: {result['playoff_active']}")
     if result['players']:
-        top = result['players'][0]
-        print(f"  Aktuell Erster: {top['name']} ({top['total']} Pkt)")
+        t = result['players'][0]
+        print(f"  Erster: {t['name']} (Gruppe {t['gruppe']} + Playoff {t['playoff']} = {t['total']})")
 
 
 if __name__ == '__main__':
