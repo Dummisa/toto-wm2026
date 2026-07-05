@@ -54,18 +54,37 @@ def _team(v):
     return s if s else None
 
 
-def _winner(home, away, hs, as_):
-    if home is None or away is None or hs is None or as_ is None:
+def _manual_winner(ws, cell, home, away):
+    """Liest einen manuell eingetragenen Sieger aus der Sieger-Zelle.
+
+    Bei Elfmeterschiessen steht in der Realität ein Remis-Ergebnis; der Sieger
+    wird dann von Hand in die Sieger-Zelle geschrieben (statt der Formel).
+    Ein Formeltext (beginnt mit '=') zaehlt NICHT als manueller Eintrag.
+    """
+    if not cell or ws is None:
         return None
-    if hs > as_:
-        return home
-    if as_ > hs:
-        return away
-    return None  # K.-o.: Unentschieden = kein Sieger eingetragen
+    v = ws[cell].value
+    if isinstance(v, str):
+        v = v.strip()
+        if v and not v.startswith('=') and v in (home, away):
+            return v
+    return None
 
 
-def _loser(home, away, hs, as_):
-    w = _winner(home, away, hs, as_)
+def _winner(home, away, hs, as_, ws=None, cell=None):
+    if home is None or away is None:
+        return None
+    if hs is not None and as_ is not None:
+        if hs > as_:
+            return home
+        if as_ > hs:
+            return away
+    # Unentschieden oder kein Ergebnis -> ggf. manuell eingetragener Sieger
+    return _manual_winner(ws, cell, home, away)
+
+
+def _loser(home, away, hs, as_, ws=None, cell=None):
+    w = _winner(home, away, hs, as_, ws, cell)
     if w is None:
         return None
     return away if w == home else home
@@ -86,12 +105,12 @@ def read_bracket(ws):
     for (c1, c2) in R32_COLS:
         h, a = _team(ws[f'{c1}3'].value), _team(ws[f'{c2}3'].value)
         hs, as_ = _num(ws[f'{c1}4'].value), _num(ws[f'{c2}4'].value)
-        r32_top.append(_winner(h, a, hs, as_))
+        r32_top.append(_winner(h, a, hs, as_, ws, f'{c1}5'))
         slots.append((h, a, hs, as_))
     for (c1, c2) in R32_COLS:
         h, a = _team(ws[f'{c1}8'].value), _team(ws[f'{c2}8'].value)
         hs, as_ = _num(ws[f'{c1}9'].value), _num(ws[f'{c2}9'].value)
-        r32_bot.append(_winner(h, a, hs, as_))
+        r32_bot.append(_winner(h, a, hs, as_, ws, f'{c1}10'))
         slots.append((h, a, hs, as_))
 
     # R16-Teilnehmer: Slot k = (Sieger oberes Spiel k, Sieger unteres Spiel k)
@@ -102,7 +121,7 @@ def read_bracket(ws):
     for k, (c1, c2) in enumerate(R16_COLS):
         h, a = r32_top[k], r32_bot[k]
         hs, as_ = _num(ws[f'{c1}14'].value), _num(ws[f'{c2}14'].value)
-        r16_winners.append(_winner(h, a, hs, as_))
+        r16_winners.append(_winner(h, a, hs, as_, ws, f'{c1}15'))
         slots.append((h, a, hs, as_))
     qf_set = set(t for t in r16_winners if t)
 
@@ -111,7 +130,7 @@ def read_bracket(ws):
     for m, (c1, c2) in enumerate(QF_COLS):
         h, a = r16_winners[2 * m], r16_winners[2 * m + 1]
         hs, as_ = _num(ws[f'{c1}19'].value), _num(ws[f'{c2}19'].value)
-        qf_winners.append(_winner(h, a, hs, as_))
+        qf_winners.append(_winner(h, a, hs, as_, ws, f'{c1}20'))
         slots.append((h, a, hs, as_))
     sf_set = set(t for t in qf_winners if t)
 
@@ -121,8 +140,8 @@ def read_bracket(ws):
     for s, (c1, c2) in enumerate(SF_COLS):
         h, a = qf_winners[2 * s], qf_winners[2 * s + 1]
         hs, as_ = _num(ws[f'{c1}24'].value), _num(ws[f'{c2}24'].value)
-        sf_winners.append(_winner(h, a, hs, as_))
-        sf_losers.append(_loser(h, a, hs, as_))
+        sf_winners.append(_winner(h, a, hs, as_, ws, f'{c1}25'))
+        sf_losers.append(_loser(h, a, hs, as_, ws, f'{c1}25'))
         slots.append((h, a, hs, as_))
     final_set = set(t for t in sf_winners if t)
 
@@ -130,14 +149,14 @@ def read_bracket(ws):
     fc1, fc2 = FINAL_COL
     fh, fa = sf_winners[0], sf_winners[1]
     fhs, fas = _num(ws[f'{fc1}29'].value), _num(ws[f'{fc2}29'].value)
-    champion = _winner(fh, fa, fhs, fas)
+    champion = _winner(fh, fa, fhs, fas, ws, 'P30')
     slots.append((fh, fa, fhs, fas))
 
     # ── Spiel um Platz 3 ──
     tc1, tc2 = THIRD_COL
     th, ta = sf_losers[0], sf_losers[1]
     ths, tas = _num(ws[f'{tc1}24'].value), _num(ws[f'{tc2}24'].value)
-    third = _winner(th, ta, ths, tas)
+    third = _winner(th, ta, ths, tas, ws, 'P25')
     slots.append((th, ta, ths, tas))
 
     return {
